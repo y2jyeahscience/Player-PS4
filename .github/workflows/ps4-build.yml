@@ -1,46 +1,43 @@
 
-name: PS4 Port - Toolchain Check
+name: PS4 Port - OpenOrbis Setup Test
 
 on:
   workflow_dispatch:
   push:
     branches:
       - ps4-port
-    paths:
-      - ".github/workflows/ps4-build.yml"
 
 jobs:
-  check-toolchain:
-    runs-on: ubuntu-latest
+  setup-openorbis:
+    runs-on: ubuntu-22.04
 
     steps:
       - name: Download project
         uses: actions/checkout@v4
 
-      - name: Install tools
+      - name: Install required tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y curl jq
+          sudo apt-get install -y curl tar
 
-      - name: Check OpenOrbis release
+      - name: Download OpenOrbis v0.5.4
         run: |
-          curl -fsSL \
-            https://api.github.com/repos/OpenOrbis/OpenOrbis-PS4-Toolchain/releases/latest \
-            -o release.json
+          curl -fL \
+            https://github.com/OpenOrbis/OpenOrbis-PS4-Toolchain/releases/download/v0.5.4/toolchain-llvm-18.tar.gz \
+            -o openorbis.tar.gz
 
-          echo "OpenOrbis release:"
-          jq -r '.tag_name' release.json
-
-          echo "Available downloads:"
-          jq -r '.assets[] | [.name, .browser_download_url] | @tsv' release.json \
-            | tee openorbis-assets.txt
-
-      - name: Check EasyRPG PS4 configuration
+      - name: Inspect OpenOrbis package
         run: |
-          grep -n -A 3 'elseif(PS4)' CMakeLists.txt
+          mkdir openorbis
+          tar -xzf openorbis.tar.gz -C openorbis
+          find openorbis -maxdepth 5 -type f | sort > openorbis-report.txt
+          echo "Package extracted successfully."
+          echo "First files found:"
+          sed -n '1,80p' openorbis-report.txt
 
-      - name: Save diagnostic report
+      - name: Upload OpenOrbis report
         uses: actions/upload-artifact@v4
         with:
-          name: ps4-toolchain-report
-          path: openorbis-assets.txt
+          name: openorbis-install-report
+          path: openorbis-report.txt
+          
